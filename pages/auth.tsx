@@ -1,16 +1,60 @@
 import Input from "@/components/Input";
+import axios from 'axios';
 import { useCallback, useState } from "react";
+import { signIn } from 'next-auth/react';
+import { useRouter } from "next/router";
 
 const Auth = () => {
+    const router = useRouter();
+
     const [email, setEmail] = useState('');
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     
     const [variant, setVariant] = useState('login')
 
+    // toggleVariant helps toggle between Login and Register pages, while holding the same url (/auth)
+    // based on which variant we're on (login or register), the fields look different
+    // for login: there's email and password, with a button to access the register page if user doesn't have login
+    // for register: there's email, password and username fields with button to access login if user already has an account
     const toggleVariant = useCallback(() => {
         setVariant((currentVariant) => currentVariant === 'login' ? 'register' : 'login');
     }, [])
+
+    // this block uses signIn functionality imported from next-auth/react and takes email and password to login
+    const login = useCallback(async() => {
+        try {
+            await signIn('credentials', {
+                email,
+                password,
+                redirect: false,
+                callbackUrl: '/'
+            });
+
+        router.push('/');
+        } catch(error) {
+            console.log(error)
+        }
+    }, [email, password, router]);
+
+
+    // this block accesses /api/register.ts file for handling api calls to register - checks for existing users and adds a new user to the database
+    const register = useCallback(async() => {
+        try {
+            await axios.post('/api/register', {
+                email,
+                name,
+                password
+            });
+
+            login();
+        } catch(error) {
+            console.log(error);
+        }
+    }, [email, name, password, login]);
+
+    
+
 
     return (
         <div className="relative h-full w-full bg-[url('/images/hero.jpg')] bg-no-repeat bg-center bg-fixed bg-cover">
@@ -49,9 +93,11 @@ const Auth = () => {
                                 value={password}
                             />
                         </div>
-                        <button className="bg-red-600 py-3 text-white rounded-md w-full mt-10 hover:bg-red-700 transition">
+                        
+                        <button onClick={variant === 'login' ? login: register} className="bg-red-600 py-3 text-white rounded-md w-full mt-10 hover:bg-red-700 transition">
                             {variant === 'login' ? 'Login' : 'Sign up'}
                         </button>
+                        
                         <p className="text-neutral-500 mt-12">
                             {variant === 'login'? 'First time using Netflix?' : 'Already have an account?'}
                             <span onClick={toggleVariant} className="text-white ml-1 hover:underline cursor-pointer">
